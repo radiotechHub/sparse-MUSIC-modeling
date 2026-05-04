@@ -187,10 +187,17 @@ SNR_db = 10
 theta_scan = np.arange(-90, 90, 0.01)
 array_sparse= np.array([0,1,6,9,11,13])
 array_index = np.arange(np.min(array_sparse),np.max(array_sparse)+1,1)
-# %% Входная реализация
+
+method = 'linear'
+# method = 'sqrt'
+# method = 'inverse'
+# method = 'uniform'
+
 signal_mode = 'harmonic'
 # signal_mode = 'random'
-# signal_mode = 'random123'
+
+# %% Входная реализация
+
 
 X_clean,X_noisy,X_sparse,t = generate_signal(array_index,angles_deg, array_sparse,f0,f_n,SNR_db,Nt,signal_mode)
 
@@ -221,10 +228,7 @@ P_multi_fbss  = MUSIC(R_mf_fbss,f0,array_index[0:L],K,theta_scan)
 
 
 # %% Разностная решетка 
-method = 'linear'
-# method = 'sqrt'
-# method = 'inverse'
-# method = 'uniform'
+
 R_virt_single= sparse_reconstruct(X_sparse[:,:,idx], array_sparse,method)
 R_virt_fbss  = FBSS(R_virt_single,L)
 
@@ -243,31 +247,31 @@ P_virt_mf_fbss= MUSIC(R_virt_mf_fbss,f0,array_index[0:L],K,theta_scan)
 
 
 # %% Отображение результатов
-plt.figure('MUSIC Эквидистантный')
-plt.plot(theta_scan, P_single,label='clean MUSIC')
-plt.plot(theta_scan, P_single_fbss,label='FBSS')
-plt.plot(theta_scan, P_multi,label='Multi-Frequency')
-plt.plot(theta_scan, P_multi_fbss,label='Multi-Frequency + FBSS')
-for ik in angles_deg:
-    plt.axvline(x=ik,color = 'black',linewidth = 1.5)
-plt.grid(True)
-plt.xlabel('Theta, angle')
-plt.ylabel('Power, dB')
-plt.legend()   # ← включает легенду
-plt.show()
+# plt.figure('MUSIC Эквидистантный')
+# plt.plot(theta_scan, P_single,label='clean MUSIC')
+# plt.plot(theta_scan, P_single_fbss,label='FBSS')
+# plt.plot(theta_scan, P_multi,label='Multi-Frequency')
+# plt.plot(theta_scan, P_multi_fbss,label='Multi-Frequency + FBSS')
+# for ik in angles_deg:
+#     plt.axvline(x=ik,color = 'black',linewidth = 1.5)
+# plt.grid(True)
+# plt.xlabel('Theta, angle')
+# plt.ylabel('Power, dB')
+# plt.legend()   # ← включает легенду
+# plt.show()
 
-plt.figure('MUSIC Разреженный')
-plt.plot(theta_scan, P_virt_single,label='clean MUSIC')
-plt.plot(theta_scan, P_virt_fbss,label='FBSS')
-plt.plot(theta_scan, P_virt_mf,label='Multi-Frequency')
-plt.plot(theta_scan, P_virt_mf_fbss,label='Multi-Frequency + FBSS')
-for ik in angles_deg:
-    plt.axvline(x=ik,color = 'black',linewidth = 1.5)
-plt.grid(True)
-plt.xlabel('Theta, angle')
-plt.ylabel('Power, dB')
-plt.legend()   # ← включает легенду
-plt.show()
+# plt.figure('MUSIC Разреженный')
+# plt.plot(theta_scan, P_virt_single,label='clean MUSIC')
+# plt.plot(theta_scan, P_virt_fbss,label='FBSS')
+# plt.plot(theta_scan, P_virt_mf,label='Multi-Frequency')
+# plt.plot(theta_scan, P_virt_mf_fbss,label='Multi-Frequency + FBSS')
+# for ik in angles_deg:
+#     plt.axvline(x=ik,color = 'black',linewidth = 1.5)
+# plt.grid(True)
+# plt.xlabel('Theta, angle')
+# plt.ylabel('Power, dB')
+# plt.legend()   # ← включает легенду
+# plt.show()
 
 
 
