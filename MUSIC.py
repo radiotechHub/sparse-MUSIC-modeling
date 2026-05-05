@@ -1,15 +1,7 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sun May  3 17:03:24 2026
-
-@author: Admin
-"""
-
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.linalg import toeplitz
-plt.close('all')
-# %% Рабочие функции 
+# %% Functions
 
 def lag_weights(cnt_vals, mode):
     max_cnt = np.max(cnt_vals)
@@ -17,7 +9,7 @@ def lag_weights(cnt_vals, mode):
     methods = {
         'linear':  lambda: cnt_vals / max_cnt,
         'sqrt':    lambda: np.sqrt(cnt_vals / max_cnt),
-        'inverse': lambda: max_cnt / cnt_vals,
+        'inverse': lambda: max_cnt / np.maximum(cnt_vals, 1),
         'uniform': lambda: np.ones_like(cnt_vals)
     }
 
@@ -62,18 +54,18 @@ def generate_signal(array_index, angles_deg, array_sparse,f0, f_n, SNR_db, Nsnap
                 + phi_n[:, None, :]))
     elif signal_mode == 'random':
         S_n = (
-            np.random.randn(K, Nsnap, Fn)
-            + 1j*np.random.randn(K, Nsnap, Fn)
+            np.random.randn(K, Nsnap, len_f)
+            + 1j*np.random.randn(K, Nsnap, len_f)
         ) / np.sqrt(2)
     else:
-        raise ValueError("signal_mode должен быть 'harmonic' или 'random'")
+        raise ValueError("signal_mode should be 'harmonic' or 'random'")
         
         
         
     X_clean  = np.zeros((M, Nsnap, len_f), dtype=complex)
     X_noisy  = np.zeros((M, Nsnap, len_f), dtype=complex)
     
-   #Signal_power = np.zeros(Fn)
+
    
     
    
@@ -91,10 +83,7 @@ def generate_signal(array_index, angles_deg, array_sparse,f0, f_n, SNR_db, Nsnap
     return X_clean, X_noisy, X_sparse, t
 
 def MUSIC(R,f,array,K,theta_scan):
-    c = 3e8
-    lam = c/f
-    d = lam/2
-    k_wave = 2*np.pi/lam
+
     
     A_scan = np.exp(1j*np.pi*array[:,None] @ np.sin(np.deg2rad(theta_scan[None,:])))
     U,s,Vh = np.linalg.svd(R)
@@ -155,10 +144,6 @@ def sparse_reconstruct(X_sparse,array_sparse, method):
     avg_vals[nz] = avg_vals[nz] * w[nz]
     
     
-    
-    
-    
-    
     center = num_virtual - 1
     
     first_col = avg_vals[center:]
@@ -168,114 +153,117 @@ def sparse_reconstruct(X_sparse,array_sparse, method):
     return Rx_virt
 
 
-# %% Входные параметры
-c = 3e8
-f0 = 3e9
-lam = c / f0
-d = lam / 2
-k_wave = 2*np.pi/lam
-Nt = 1000
-angles_deg = np.array([-5, 5])
-K = len(angles_deg)
-deltaF = 50e6
-Fn= 11
-L = 10
-k = np.arange(Fn) - (Fn - 1) / 2
-f_n = f0 + k * deltaF
-SNR_db = 10
-
-theta_scan = np.arange(-90, 90, 0.01)
-array_sparse= np.array([0,1,6,9,11,13])
-array_index = np.arange(np.min(array_sparse),np.max(array_sparse)+1,1)
-
-method = 'linear'
-# method = 'sqrt'
-# method = 'inverse'
-# method = 'uniform'
-
-signal_mode = 'harmonic'
-# signal_mode = 'random'
-
-# %% Входная реализация
 
 
-X_clean,X_noisy,X_sparse,t = generate_signal(array_index,angles_deg, array_sparse,f0,f_n,SNR_db,Nt,signal_mode)
+def main():
+    # %% Parameters
+    f0 = 3e9
+    Nt = 1000
+    angles_deg = np.array([-5, 5])
+    K = len(angles_deg)
+    deltaF = 50e6
+    Fn= 11
+    L = 10
+    k = np.arange(Fn) - (Fn - 1) / 2
+    f_n = f0 + k * deltaF
+    SNR_db = 10
+
+    theta_scan = np.arange(-90, 90, 0.01)
+    array_sparse= np.array([0,1,6,9,11,13]) #Warning. Use only non-hole array
+    array_index = np.arange(np.min(array_sparse),np.max(array_sparse)+1,1)
+    '''
+    choosing a method for sparse reconstruction
+    '''
+    method = 'linear'
+    # method = 'sqrt'
+    # method = 'inverse'
+    # method = 'uniform'
+    '''
+    signals are coherent or independance
+    '''
+    signal_mode = 'harmonic'
+    # signal_mode = 'random'
+
+    # %% Imput signal modeling
 
 
-idx = np.argmin(np.abs(f_n - f0))
-X_f0 = X_noisy[:, :, idx]
-# %% Ковариационные матрицы
-R_single = X_f0 @ X_f0.conj().T / Nt
-R_fbss   = FBSS(R_single,L)
-
-R_f = np.zeros((len(array_index),len(array_index),len(f_n)), dtype=complex)
-for ik in range(len(f_n)):
-    X1 = X_noisy[:,:,ik]
-    X2 = X_noisy[:,:,ik]
-    R_f[:,:,ik] = X1 @ X2.conj().T / Nt 
-R_mf     = np.sum(R_f,2)/len(f_n)
-R_mf_fbss = FBSS(R_mf,L)
-
-# %% Псевдоспектры
-P_single =      MUSIC(R_single,f0,array_index,K,theta_scan)
-P_single_fbss = MUSIC(R_fbss,f0,array_index[0:L],K,theta_scan)
-P_multi  =      MUSIC(R_mf,f0,array_index,K,theta_scan)
-P_multi_fbss  = MUSIC(R_mf_fbss,f0,array_index[0:L],K,theta_scan)
+    X_clean,X_noisy,X_sparse,t = generate_signal(array_index,angles_deg, array_sparse,f0,f_n,SNR_db,Nt,signal_mode)
 
 
+    idx = np.argmin(np.abs(f_n - f0))
+    X_f0 = X_noisy[:, :, idx]
+    # %% Covariance Matrix
+    R_single = X_f0 @ X_f0.conj().T / Nt
+    R_fbss   = FBSS(R_single,L)
 
+    R_f = np.zeros((len(array_index),len(array_index),len(f_n)), dtype=complex)
+    for ik in range(len(f_n)):
+        X_1 = X_noisy[:,:,ik]
+        R_f[:,:,ik] = X_1 @ X_1.conj().T / Nt 
+    R_mf     = np.sum(R_f,2)/len(f_n)
+    R_mf_fbss = FBSS(R_mf,L)
 
-
-
-# %% Разностная решетка 
-
-R_virt_single= sparse_reconstruct(X_sparse[:,:,idx], array_sparse,method)
-R_virt_fbss  = FBSS(R_virt_single,L)
-
-R_virt_mf = np.zeros((len(array_index),len(array_index),len(f_n)), dtype=complex)
-for ik in range(len(f_n)):
-    R_virt_mf[:,:,ik] = sparse_reconstruct(X_sparse[:,:,ik], array_sparse,method)
-R_virt_mf_total     = np.mean(R_virt_mf, axis=2)
-
-R_virt_mf_fbss = FBSS(R_virt_mf_total,L)
-
-# %% Псевдоспектры разностной решетки
-P_virt_single = MUSIC(R_virt_single,f0,array_index,K,theta_scan)
-P_virt_fbss   = MUSIC(R_virt_fbss,f0,array_index[0:L],K,theta_scan)
-P_virt_mf     = MUSIC(R_virt_mf_total,f0,array_index,K,theta_scan)
-P_virt_mf_fbss= MUSIC(R_virt_mf_fbss,f0,array_index[0:L],K,theta_scan)
-
-
-# %% Отображение результатов
-# plt.figure('MUSIC Эквидистантный')
-# plt.plot(theta_scan, P_single,label='clean MUSIC')
-# plt.plot(theta_scan, P_single_fbss,label='FBSS')
-# plt.plot(theta_scan, P_multi,label='Multi-Frequency')
-# plt.plot(theta_scan, P_multi_fbss,label='Multi-Frequency + FBSS')
-# for ik in angles_deg:
-#     plt.axvline(x=ik,color = 'black',linewidth = 1.5)
-# plt.grid(True)
-# plt.xlabel('Theta, angle')
-# plt.ylabel('Power, dB')
-# plt.legend()   # ← включает легенду
-# plt.show()
-
-# plt.figure('MUSIC Разреженный')
-# plt.plot(theta_scan, P_virt_single,label='clean MUSIC')
-# plt.plot(theta_scan, P_virt_fbss,label='FBSS')
-# plt.plot(theta_scan, P_virt_mf,label='Multi-Frequency')
-# plt.plot(theta_scan, P_virt_mf_fbss,label='Multi-Frequency + FBSS')
-# for ik in angles_deg:
-#     plt.axvline(x=ik,color = 'black',linewidth = 1.5)
-# plt.grid(True)
-# plt.xlabel('Theta, angle')
-# plt.ylabel('Power, dB')
-# plt.legend()   # ← включает легенду
-# plt.show()
+    # %% MUSIC Spectrum
+    P_single =      MUSIC(R_single,f0,array_index,K,theta_scan)
+    P_single_fbss = MUSIC(R_fbss,f0,array_index[0:L],K,theta_scan)
+    P_multi  =      MUSIC(R_mf,f0,array_index,K,theta_scan)
+    P_multi_fbss  = MUSIC(R_mf_fbss,f0,array_index[0:L],K,theta_scan)
 
 
 
 
+
+
+    # %% Sparse Array 
+
+    R_virt_single= sparse_reconstruct(X_sparse[:,:,idx], array_sparse,method)
+    R_virt_fbss  = FBSS(R_virt_single,L)
+
+    R_virt_mf = np.zeros((len(array_index),len(array_index),len(f_n)), dtype=complex)
+    for ik in range(len(f_n)):
+        R_virt_mf[:,:,ik] = sparse_reconstruct(X_sparse[:,:,ik], array_sparse,method)
+    R_virt_mf_total     = np.mean(R_virt_mf, axis=2)
+
+    R_virt_mf_fbss = FBSS(R_virt_mf_total,L)
+
+    # %% Sparse MUSIC Spectrum
+    P_virt_single = MUSIC(R_virt_single,f0,array_index,K,theta_scan)
+    P_virt_fbss   = MUSIC(R_virt_fbss,f0,array_index[0:L],K,theta_scan)
+    P_virt_mf     = MUSIC(R_virt_mf_total,f0,array_index,K,theta_scan)
+    P_virt_mf_fbss= MUSIC(R_virt_mf_fbss,f0,array_index[0:L],K,theta_scan)
+
+
+    # %% Graphs
+    plt.figure('MUSIC ULA')
+    plt.plot(theta_scan, P_single,label='MUSIC')
+    plt.plot(theta_scan, P_single_fbss,label='FBSS')
+    plt.plot(theta_scan, P_multi,label='Multi-Frequency (MF)')
+    plt.plot(theta_scan, P_multi_fbss,label='MF + FBSS')
+    for ik in angles_deg:
+        plt.axvline(x=ik,color = 'black',linewidth = 1.5)
+    plt.grid(True)
+    plt.xlabel('Theta, angle')
+    plt.ylabel('Power, dB')
+    plt.title('MUSIC spectrum for ULA aperture')
+    plt.legend()   
+    plt.show()
+
+    plt.figure('MUSIC Sparse')
+    plt.plot(theta_scan, P_virt_single,label='MUSIC')
+    plt.plot(theta_scan, P_virt_fbss,label='FBSS')
+    plt.plot(theta_scan, P_virt_mf,label='Multi-Frequency (MF)')
+    plt.plot(theta_scan, P_virt_mf_fbss,label='MF + FBSS')
+    for ik in angles_deg:
+        plt.axvline(x=ik,color = 'black',linewidth = 1.5)
+    plt.grid(True)
+    plt.xlabel('Theta, angle')
+    plt.ylabel('Power, dB')
+    plt.title('MUSIC spectrum for sparse aperture')
+    plt.legend()  
+    plt.show()
+
+if __name__ == "__main__":
+    main()
 
 
 
